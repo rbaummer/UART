@@ -28,7 +28,8 @@ entity uart_rx is
 		baud_en : in std_logic;
 		rx_byte : out std_logic_vector(7 downto 0);
 		rx_valid : out std_logic;
-		rx_frame_error : out std_logic
+		rx_frame_error : out std_logic;
+		rx_break : out std_logic
 	);
 end uart_rx;
 
@@ -40,15 +41,20 @@ architecture behavorial of uart_rx is
 	signal bit_cnt : std_logic_vector(2 downto 0);
 	signal data_reg: std_logic_vector(7 downto 0);
 	signal frame_error : std_logic;
+	signal frame_error_reg : std_logic;
 	signal valid : std_logic;  
+	signal valid_reg : std_logic;
 	signal shift : std_logic;
 	
 	type statetype is (idle, start, data, stop, frame_err);
 	signal cs, ns : statetype;
 begin
+	--RX Byte
 	rx_byte <= data_reg;
-	rx_valid <= valid;
-	rx_frame_error <= frame_error;
+	--Edge detection of valid signal
+	rx_valid <= valid and not valid_reg;
+	--Edge detection of frame error signal
+	rx_frame_error <= frame_error and not frame_error_reg;
 
 	--Sequential process for RX Statemachine
 	--Baud_en is used as an enable to allow state machine to operate at proper 
@@ -186,6 +192,23 @@ begin
 			--capture serial bit when commanded
 			elsif shift = '1' and baud_en = '1' then
 				data_reg <= DIN & data_reg(7 downto 1);
+			end if;
+		end if;
+	end process;
+	
+	--break detection
+	rx_break <= '1' when data_reg = X"00" and frame_error = '1' else '0';
+	
+	--Edge detection registers
+	process (sys_clk)
+	begin
+		if sys_clk = '1' and sys_clk'event then
+			if reset = '1' then
+				valid_reg <= '0';
+				frame_error_reg <= '0';
+			else
+				valid_reg <= valid;
+				frame_error_reg <= frame_error;
 			end if;
 		end if;
 	end process;

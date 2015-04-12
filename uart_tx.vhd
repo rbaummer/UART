@@ -27,6 +27,7 @@ entity uart_tx is
 		--Transmitter interface
 		baud_en : in std_logic;
 		tx_fifo_empty : in std_logic;
+		tx_fifo_read : out std_logic;
 		tx_byte : in std_logic_vector(7 downto 0);
 		tx_valid : in std_logic
 	);
@@ -48,6 +49,9 @@ architecture behavorial of uart_tx is
 	type statetype is (idle, start, data, stop);
 	signal cs, ns : statetype;
 begin
+	--FIFO read signal
+	tx_fifo_read <= tx_fifo_read_i and not tx_fifo_read_reg;
+
 	--Sequential process for RX Statemachine
 	--Baud_en is used as an enable to allow state machine to operate at proper 
 	--frequency
@@ -77,6 +81,9 @@ begin
 			--wait for next byte to transmit
 			when idle =>
 				cnt_rst <= '1';
+				--idle transmit is high, if open collector output change to output
+				--high impedance during idle
+				send_stop <= '1';
 				--when the transmit fifo isn't empty
 				if tx_fifo_empty = '0' then
 					ns <= start;
@@ -172,5 +179,17 @@ begin
 	--send_start forces output to 0 for start bit
 	--send_stop muxes 1 to output for stop bit
 	DOUT <= data_reg(0) and not send_start when send_stop = '0' else '1';
+	
+	--edge detection register for tx_read
+	process (sys_clk)
+	begin
+		if sys_clk = '1' and sys_clk'event then
+			if reset = '1' then
+				tx_fifo_read_reg <= '0';
+			else
+				tx_fifo_read_reg <= tx_fifo_read_i;
+			end if;
+		end if;
+	end process;
 end behavorial;
 	

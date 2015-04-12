@@ -21,6 +21,7 @@ entity uart_baud_rate_det is
 		--System Interface
 		reset : in std_logic;
 		sys_clk : in std_logic;
+		--Processor override of auto detection
 		baud_rate_override : in std_logic_vector(2 downto 0);
 		baud_rate_write : in std_logic;
 		
@@ -50,6 +51,8 @@ architecture behavorial of uart_baud_rate_det is
 	signal det_09_6 : std_logic;
 	signal good_detect : std_logic;	  
 	signal set_baud : std_logic;
+	signal baud_rate_write_reg : std_logic;
+	signal baud_rate_write_i : std_logic;
 begin
 	baud_rate_sel <= baud_rate_reg;
 
@@ -66,7 +69,7 @@ begin
 	end process;
 	
 	--combinatorial processor for state machine
-	process (cs, rx_byte, rx_valid, rx_frame_error, good_detect)
+	process (cs, rx_byte, rx_valid, rx_frame_error, good_detect, baud_rate_write_i)
 	begin
 		--default values for control signals
 		reset_baud <= '0';
@@ -131,7 +134,12 @@ begin
 			--baud rate detection failed
 			when unlocked =>
 				baud_unlocked <= '1';
-				ns <= unlocked;			
+				--if processor manually sets baud rate goto locked
+				if baud_rate_write_i = '1' then
+					ns <= locked;
+				else
+					ns <= unlocked;
+				end if;
 			when others =>
 				ns <= idle;
 		end case;
@@ -178,10 +186,25 @@ begin
 					baud_rate_reg <= "100";
 				end if;
 			--processor override for baud rate
-			elsif baud_rate_write = '1' then
+			elsif baud_rate_write_i = '1' then
 				baud_rate_reg <= baud_rate_override;
 			end if;
 		end if;
 	end process;
+	
+	--edge detection register for baud rate write
+	process (sys_clk)
+	begin
+		if sys_clk = '1' and sys_clk'event then
+			if reset = '1' then
+				baud_rate_write_reg <= '0';
+			else
+				baud_rate_write_reg <= baud_rate_write;
+			end if;
+		end if;
+	end process;
+	
+	--edge detection for processor baud rate write
+	baud_rate_write_i <= baud_rate_write and not baud_rate_write_reg;
 
 end behavorial;

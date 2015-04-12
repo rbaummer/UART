@@ -151,6 +151,19 @@ begin
 	empty_i <= '1' when read_addr = write_addr_sync else '0';
 	empty <= empty_i;
 	
+	--valid signal
+	--unless fifo is empty valid is high 1 clock after read signal
+	process (read_clk)
+	begin
+		if read_clk = '1' and read_clk'event then
+			if reset = '1' then
+				valid <= '0';
+			else
+				valid <= not empty and read;
+			end if;
+		end if;
+	end process;
+	
 	----------------------------------------------------------------------------
 	--								SRAM									  --
 	----------------------------------------------------------------------------
