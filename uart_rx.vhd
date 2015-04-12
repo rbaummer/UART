@@ -19,6 +19,7 @@ entity uart_rx is
 	port (
 		--System Interface
 		reset : in std_logic;
+		enable : in std_logic;
 		sys_clk : in std_logic;
 		
 		--UART serial interface
@@ -62,7 +63,7 @@ begin
 	process (sys_clk)
 	begin
 		if sys_clk = '1' and sys_clk'event then
-			if reset = '1' then
+			if reset = '1' or enable = '0' then
 				cs <= idle;
 			elsif baud_en = '1' then
 				cs <= ns;
@@ -159,7 +160,7 @@ begin
 	process (sys_clk)
 	begin
 		if sys_clk = '1' and sys_clk'event then
-			if reset = '1' or cnt_rst = '1' then
+			if reset = '1' or (cnt_rst = '1' and baud_en = '1') then
 				cnt <= "000";
 			--baud_en allows counter to operate at proper baud rate
 			elsif baud_en = '1' then

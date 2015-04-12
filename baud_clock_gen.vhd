@@ -75,7 +75,7 @@ begin
 	end process;
 	
 	--Enable is high at selectable rate 9.6, 14.4, 19.1, 38.4 or 57.6 KHz
-	slow_baud_en <= '1' when slow_baud_counter = slow_baud_rollover else '0';
+	slow_baud_en <= fast_baud_en when slow_baud_counter = slow_baud_rollover else '0';
 	
 	process (baud_rate_sel)
 	begin

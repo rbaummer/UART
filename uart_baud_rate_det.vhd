@@ -80,12 +80,17 @@ begin
 		case cs is
 			--wait for valid or invalid rx byte
 			when idle =>
-				--reset baud rate to default 57.6k
-				reset_baud <= '1';
+				--if processor sets baud rate
+				if baud_rate_write_i = '1' then
+					reset_baud <= '0';
+					ns <= locked;
 				--depending on transmitter baud the RX byte could have a frame error
-				if rx_valid = '1' or rx_frame_error = '1' then
+				elsif rx_valid = '1' or rx_frame_error = '1' then
+					reset_baud <= '0';
 					ns <= detect;
 				else
+					--reset baud rate to default 57.6k
+					reset_baud <= '1';
 					ns <= idle;
 				end if;
 			--Receiver defaults to highest baud rate (57.6k)
@@ -160,7 +165,8 @@ begin
 	
 	--Possible values of TX_Byte = 0x0D when sent at various baud rates
 	det_57_6 <= '1' when rx_byte = X"0D" else '0';
-	det_38_4 <= '1' when rx_byte = X"E6" else '0';
+	--due to 38.4 being 1.5x slower than 57.6 certain bits are unstable
+	det_38_4 <= '1' when rx_byte(7) = '0' and rx_byte(5) = '1' and rx_byte(4) = '1' and rx_byte(2) = '0' and rx_byte(1) = '1' else '0';
 	det_19_2 <= '1' when rx_byte = X"1C" else '0';
 	det_14_4 <= '1' when rx_byte = X"78" else '0';
 	det_09_6 <= '1' when rx_byte = X"E0" else '0';
@@ -172,6 +178,9 @@ begin
 		if sys_clk = '1' and sys_clk'event then
 			if reset = '1' or reset_baud = '1' then
 				baud_rate_reg <= "000";
+			--processor override for baud rate
+			elsif baud_rate_write_i = '1' then
+				baud_rate_reg <= baud_rate_override;
 			--Save detected baud rate
 			elsif  set_baud = '1' then
 				if det_57_6 = '1' then
@@ -185,9 +194,6 @@ begin
 				elsif det_09_6 = '1' then
 					baud_rate_reg <= "100";
 				end if;
-			--processor override for baud rate
-			elsif baud_rate_write_i = '1' then
-				baud_rate_reg <= baud_rate_override;
 			end if;
 		end if;
 	end process;

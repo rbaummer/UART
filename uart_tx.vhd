@@ -45,6 +45,7 @@ architecture behavorial of uart_tx is
 	signal tx_fifo_read_i : std_logic;
 	signal tx_fifo_read_reg : std_logic;	
 	signal shift : std_logic;
+	signal data_load : std_logic;
 	
 	type statetype is (idle, start, data, stop);
 	signal cs, ns : statetype;
@@ -67,7 +68,7 @@ begin
 	end process;
 
 	--Next State Combinatorial process
-	process (cs, cnt, bit_cnt_en)
+	process (cs, cnt, bit_cnt_en, bit_cnt, tx_fifo_empty)
 	begin
 		--default values for output signals
 		send_start <= '0';
@@ -77,6 +78,7 @@ begin
 		cnt_en <= '0';
 		bit_cnt_en <= '0';
 		shift <= '0';
+		data_load <= '0';
 		case cs is
 			--wait for next byte to transmit
 			when idle =>
@@ -93,11 +95,14 @@ begin
 			--send start bit and read transmit byte
 			when start =>
 				send_start <= '1';
+				--read byte to send
 				tx_fifo_read_i <= '1';
 				--Using 8x baud counter from receiver so count 8 times
 				if cnt = "111" then
+					data_load <= '1';
 					ns <= data;
 				else
+					data_load <= '0';
 					ns <= start;
 				end if;
 			--send data bits
@@ -168,6 +173,9 @@ begin
 		if sys_clk = '1' and sys_clk'event then
 			if reset = '1' then
 				data_reg <= X"00";
+			--load in byte from transmit fifo
+			elsif data_load = '1' then
+				data_reg <= tx_byte;
 			--capture serial bit when commanded
 			elsif shift = '1' and baud_en = '1' then
 				data_reg <= '0' & data_reg(7 downto 1);

@@ -52,7 +52,8 @@ architecture behavioral of mixed_clock_fifo_srambased is
 	signal read_addr_sync : std_logic_vector(addr_size-1 downto 0);
 	signal write_difference : std_logic_vector(addr_size downto 0);
 	signal empty_i : std_logic;
-	signal full_i : std_logic;
+	signal full_i : std_logic;	
+	signal read_port : std_logic_vector(N-1 downto 0);
 	
 	type ram is array(L-1 downto 0) of std_logic_vector(N-1 downto 0);
 	shared variable dualport_sram : ram;
@@ -181,10 +182,23 @@ begin
 	process (read_clk)
 	begin
 		if read_clk = '1' and read_clk'event then
-			read_data <= dualport_sram(to_integer(unsigned(read_addr)));
+			read_port <= dualport_sram(to_integer(unsigned(read_addr)));
 		end if;
 	end process;
 	
+	--Output Register
+	--Next data word is available after read signal
+	--Remove register to make FIFO first-word-fallthrough
+	process (read_clk)
+	begin
+		if read_clk = '1' and read_clk'event then
+			if reset = '1' then
+				read_data <= read_port;
+			elsif read = '1' then
+				read_data <= read_port;
+			end if;
+		end if;
+	end process;
 	
 end behavioral;
 		
