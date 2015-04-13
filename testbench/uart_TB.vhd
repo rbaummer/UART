@@ -112,6 +112,7 @@ begin
 		variable send_array : byte_array(0 to 3) := (X"01", X"02", X"03", X"f6");	
 		variable return_array : byte_array(0 to 3) := (X"00", X"00", X"00", X"00");	 
 		variable overflow_array : byte_array(0 to 7) := (X"01", X"02", X"03", X"04", X"05", X"06", X"07", X"08");
+		variable return_array2 : byte_array(0 to 7) := ((others => (others => '0')));
 		variable byte : std_logic_vector(7 downto 0) := X"00";
 	begin
 		reset <= '1';
@@ -244,7 +245,10 @@ begin
 		assert byte(2) = '1' report "Receiver didn't catch overflow" severity failure;	 
 		report "Overflow detected" severity note;
 		
-		assert compare_array(overflow_array(0 to 6), return_array) report "Data Mismatch, expected 7 good bytes" severity failure;
+		--Retreive packet
+		processor_UART_read(return_array2(0 to 6), p1);
+		
+		assert compare_array(overflow_array(0 to 6), return_array2(0 to 6)) report "Data Mismatch, expected 7 good bytes" severity failure;
 		report "Data Match, received 7 good bytes" severity note;
 		
 		

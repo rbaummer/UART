@@ -41,15 +41,15 @@ end mixed_clock_fifo_srambased;
 
 architecture behavioral of mixed_clock_fifo_srambased is
 	constant addr_size : integer := integer(log2(real(L)));
-	constant reserve : std_logic_vector(addr_size-1 downto 0) := std_logic_vector(to_unsigned(1,addr_size));
-	signal write_addr : std_logic_vector(addr_size-1 downto 0);
-	signal write_addr_gray : std_logic_vector(addr_size-1 downto 0);
-	signal write_addr_gray_sync : std_logic_vector(addr_size-1 downto 0);
-	signal write_addr_sync : std_logic_vector(addr_size-1 downto 0);
-	signal read_addr : std_logic_vector(addr_size-1 downto 0);
-	signal read_addr_gray : std_logic_vector(addr_size-1 downto 0);
-	signal read_addr_gray_sync : std_logic_vector(addr_size-1 downto 0);
-	signal read_addr_sync : std_logic_vector(addr_size-1 downto 0);
+	constant reserve : std_logic_vector(addr_size downto 0) := std_logic_vector(to_unsigned(1,addr_size+1));
+	signal write_addr : std_logic_vector(addr_size downto 0);
+	signal write_addr_gray : std_logic_vector(addr_size downto 0);
+	signal write_addr_gray_sync : std_logic_vector(addr_size downto 0);
+	signal write_addr_sync : std_logic_vector(addr_size downto 0);
+	signal read_addr : std_logic_vector(addr_size downto 0);
+	signal read_addr_gray : std_logic_vector(addr_size downto 0);
+	signal read_addr_gray_sync : std_logic_vector(addr_size downto 0);
+	signal read_addr_sync : std_logic_vector(addr_size downto 0);
 	signal write_difference : std_logic_vector(addr_size downto 0);
 	signal empty_i : std_logic;
 	signal full_i : std_logic;	
@@ -88,7 +88,7 @@ begin
 			if reset = '1' then
 				write_addr <= (others => '0');
 			elsif write = '1' and full_i = '0' then
-				write_addr <= write_addr + std_logic_vector(to_unsigned(1,addr_size-1));
+				write_addr <= write_addr + std_logic_vector(to_unsigned(1,addr_size+1));
 			end if;
 		end if;
 	end process;
@@ -100,7 +100,7 @@ begin
 	--Write address synced to read clock domain
 	raddr_sync : entity work.nbit_synchronizer
 		generic map (
-			N => addr_size)
+			N => addr_size+1)
 		port map (
 			clk => read_clk,
 			reset => reset,
@@ -111,7 +111,7 @@ begin
 	read_addr_sync <= gray_to_binary(read_addr_gray_sync);
 	
 	--full detection logic
-	write_difference <= ('0' & write_addr) - ('0' & read_addr_sync) + reserve;
+	write_difference <= write_addr - read_addr_sync + reserve;
 	--if MSB of write_difference is 1 then write_difference >= L and the fifo is full
 	full_i <= '1' when write_difference(write_difference'high) = '1' else '0';
 	full <= full_i;
@@ -126,7 +126,7 @@ begin
 			if reset = '1' then
 				read_addr <= (others => '0');
 			elsif read = '1' and empty_i = '0' then
-				read_addr <= read_addr + std_logic_vector(to_unsigned(1,addr_size-1));
+				read_addr <= read_addr + std_logic_vector(to_unsigned(1,addr_size+1));
 			end if;
 		end if;
 	end process;
@@ -138,7 +138,7 @@ begin
 	--Write address synced to read clock domain
 	waddr_sync : entity work.nbit_synchronizer
 		generic map (
-			N => addr_size)
+			N => addr_size+1)
 		port map (
 			clk => read_clk,
 			reset => reset,
@@ -173,7 +173,8 @@ begin
 	begin
 		if write_clk = '1' and write_clk'event then
 			if write = '1' and full_i = '0' then
-				dualport_sram(to_integer(unsigned(write_addr))) := write_data;
+				--The MSB of the address is not used to address the memory
+				dualport_sram(to_integer(unsigned(write_addr(addr_size-1 downto 0)))) := write_data;
 			end if;
 		end if;
 	end process;
@@ -182,7 +183,8 @@ begin
 	process (read_clk)
 	begin
 		if read_clk = '1' and read_clk'event then
-			read_port <= dualport_sram(to_integer(unsigned(read_addr)));
+			--The MSB of the address is not used to address the memory
+			read_port <= dualport_sram(to_integer(unsigned(read_addr(addr_size-1 downto 0))));
 		end if;
 	end process;
 	
