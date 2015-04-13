@@ -110,7 +110,9 @@ begin
 	--Main process for test bench
 	process		  
 		variable send_array : byte_array(0 to 3) := (X"01", X"02", X"03", X"f6");	
-		variable return_array : byte_array(0 to 3) := (X"00", X"00", X"00", X"00");
+		variable return_array : byte_array(0 to 3) := (X"00", X"00", X"00", X"00");	 
+		variable overflow_array : byte_array(0 to 7) := (X"01", X"02", X"03", X"04", X"05", X"06", X"07", X"08");
+		variable byte : std_logic_vector(7 downto 0) := X"00";
 	begin
 		reset <= '1';
 		wait for 100 ns;	   
@@ -220,8 +222,35 @@ begin
 		UART_reset(p0);
 		UART_reset(p1);
 		
-		--End of Test
-		report "Tests Complete.  All baud rates verified" severity failure;
+		--End of Test																
+		report "Tests Complete.  All baud rates verified" severity warning;
+		
+		----------------------------------------------------------------------------
+		--Test Overflow Detection													
+		----------------------------------------------------------------------------
+		UART_init(576, p0, p1);
+		
+		--Send a packet, due to mixed clock domains 8 location FIFO will overflow at 8 words	
+		send_array := overflow_array(0 to 3);
+		processor_UART_write(send_array, p0);
+		wait for 2 ms;									 
+		--writes split up to avoid overflowing TX fifo
+		send_array := overflow_array(4 to 7);
+		processor_UART_write(send_array, p0);
+		wait for 2 ms;
+		
+		--check overflow bit set
+		processor_read(status_addr, byte, p1);
+		assert byte(2) = '1' report "Receiver didn't catch overflow" severity failure;	 
+		report "Overflow detected" severity note;
+		
+		assert compare_array(overflow_array(0 to 6), return_array) report "Data Mismatch, expected 7 good bytes" severity failure;
+		report "Data Match, received 7 good bytes" severity note;
+		
+		
+		--end simulation
+		report "Simulation Finished.  All tests passed." severity failure;
+		
 		
 		wait for 1 ms;
 	end process;

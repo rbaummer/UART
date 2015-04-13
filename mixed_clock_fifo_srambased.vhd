@@ -41,7 +41,7 @@ end mixed_clock_fifo_srambased;
 
 architecture behavioral of mixed_clock_fifo_srambased is
 	constant addr_size : integer := integer(log2(real(L)));
-	constant reserve : std_logic_vector(addr_size-1 downto 0) := std_logic_vector(to_unsigned(2,addr_size));
+	constant reserve : std_logic_vector(addr_size-1 downto 0) := std_logic_vector(to_unsigned(1,addr_size));
 	signal write_addr : std_logic_vector(addr_size-1 downto 0);
 	signal write_addr_gray : std_logic_vector(addr_size-1 downto 0);
 	signal write_addr_gray_sync : std_logic_vector(addr_size-1 downto 0);

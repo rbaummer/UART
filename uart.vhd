@@ -169,8 +169,8 @@ begin
 		if sys_clk = '1' and sys_clk'event then
 			if uart_reset = '1' or status_clear_sync = '1' then
 				rx_overflow <= '0';
-			else
-				rx_overflow <= rx_valid and rx_full;
+			elsif rx_valid = '1' and rx_full = '1' then
+				rx_overflow <= '1';
 			end if;
 		end if;
 	end process;
