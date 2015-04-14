@@ -77,6 +77,8 @@ begin
 		baud_locked <= '0';
 		baud_unlocked <= '0';	  
 		set_baud <= '0';
+		cnt_rst <= '0';
+		cnt_en <= '0';
 		case cs is
 			--wait for valid or invalid rx byte
 			when idle =>
