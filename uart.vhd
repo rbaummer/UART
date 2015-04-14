@@ -143,7 +143,7 @@ begin
 			rx_break => rx_break);
 			
 	--Receive FIFO
-	rx_fifo : entity mixed_clock_fifo_srambased
+	rx_fifo : entity work.mixed_clock_fifo_srambased
 		generic map (
 			N => 8,
 			L => 8)
