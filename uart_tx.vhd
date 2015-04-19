@@ -129,7 +129,11 @@ begin
 				send_stop <= '1';
 				--Using 8x baud counter from receiver so count 8 times
 				if cnt = "111" then
-					ns <= idle;
+					if tx_fifo_empty = '0' then
+						ns <= start;
+					else
+						ns <= idle;
+					end if;
 				else
 					ns <= stop;
 				end if;			
