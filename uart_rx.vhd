@@ -46,6 +46,9 @@ architecture behavorial of uart_rx is
 	signal valid : std_logic;  
 	signal valid_reg : std_logic;
 	signal shift : std_logic;
+	signal shift_dly : std_logic;
+	signal bit_in : std_logic;
+	signal sample_reg : std_logic_vector(2 downto 0);
 	
 	type statetype is (idle, start, data, stop, frame_err);
 	signal cs, ns : statetype;
@@ -183,7 +186,36 @@ begin
 		end if;
 	end process;
 	
-	--shift register
+	--sample shift register
+	--for majority vote around bit center to help prevent glitches causing faulty byte
+	process (sys_clk)
+	begin
+		if sys_clk = '1' and sys_clk'event then
+			if reset = '1' then
+				sample_reg <= "000";
+			elsif baud_en = '1' then
+				sample_reg <= DIN & sample_reg(2 downto 1);
+			end if;
+		end if;
+	end process;
+	
+	--Majority voter
+	bit_in <= (sample_reg(0) and sample_reg(1)) or (sample_reg(1) and sample_reg(2)) or (sample_reg(0) and sample_reg(2));
+	
+	--shift delay register
+	--delay the shift by a baud_en to get the sample after the bit center
+	process (sys_clk)
+	begin
+		if sys_clk = '1' and sys_clk'event then
+			if reset = '1' then
+				shift_dly <= '0';
+			elsif baud_en = '1' then
+				shift_dly <= shift;
+			end if;
+		end if;
+	end process;
+	
+	--byte shift register
 	--collect the serial bits as they are received
 	process (sys_clk)
 	begin
@@ -191,8 +223,8 @@ begin
 			if reset = '1' then
 				data_reg <= X"00";
 			--capture serial bit when commanded
-			elsif shift = '1' and baud_en = '1' then
-				data_reg <= DIN & data_reg(7 downto 1);
+			elsif shift_dly = '1' and baud_en = '1' then
+				data_reg <= bit_in & data_reg(7 downto 1);
 			end if;
 		end if;
 	end process;
